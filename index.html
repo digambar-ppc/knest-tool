@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>K-Nest Barcode Issue Tool</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js">
+function toggleInfo(){
+  const panel = document.getElementById('infoPanel');
+  const arrow = document.getElementById('infoArrow');
+  const isOpen = panel.classList.contains('open');
+  panel.classList.toggle('open');
+  arrow.textContent = isOpen ? '▼' : '▲';
+}
+
+</script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',sans-serif;background:#f0f2f5;color:#222;font-size:13px}
+.header{background:linear-gradient(135deg,#1a3c6e 0%,#2a5298 100%);color:#fff;padding:0}
+.header-top{display:flex;align-items:center;justify-content:space-between;padding:14px 22px 10px;flex-wrap:wrap;gap:8px}
+.header-logo{display:flex;align-items:center;gap:12px}
+.header-icon{width:42px;height:42px;background:rgba(255,255,255,0.15);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px}
+.header-title h1{font-size:17px;font-weight:700}
+.header-title p{font-size:10px;opacity:.75;margin-top:1px}
+.header-badge{text-align:right}
+.header-badge .by{font-size:9px;opacity:.6}
+.header-badge .name{font-size:12px;font-weight:700}
+.header-badge .dept{font-size:9px;opacity:.65;background:rgba(255,255,255,.12);padding:2px 8px;border-radius:10px;display:inline-block;margin-top:2px}
+
+/* ── OVERLAY SCREENS ── */
+.overlay{position:fixed;top:0;left:0;width:100%;height:100%;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column}
+.overlay-dark{background:linear-gradient(135deg,#1a3c6e,#0d1f3c)}
+.overlay-white{background:#f0f2f5}
+
+/* Checking screen */
+#screenChecking{display:flex}
+.check-spin{width:38px;height:38px;border:4px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;margin-bottom:12px}
+.check-text{color:rgba(255,255,255,.7);font-size:12px}
+
+/* Locked screen */
+#screenLocked{display:none}
+.lock-icon{font-size:60px;margin-bottom:12px}
+.lock-title{color:#fff;font-size:18px;font-weight:700;margin-bottom:6px}
+.lock-sub{color:rgba(255,255,255,.55);font-size:12px;text-align:center;max-width:280px;line-height:1.7}
+.lock-brand{color:rgba(255,255,255,.25);font-size:10px;margin-top:24px}
+
+/* Admin login screen */
+#screenLogin{display:none;background:#f0f2f5}
+.login-card{background:#fff;border-radius:14px;padding:32px 28px;width:320px;box-shadow:0 4px 24px rgba(0,0,0,.12);text-align:center}
+.login-card .icon{font-size:40px;margin-bottom:10px}
+.login-card h2{font-size:16px;font-weight:700;color:#1a3c6e;margin-bottom:4px}
+.login-card p{font-size:11px;color:#888;margin-bottom:20px}
+.login-card input{width:100%;border:1.5px solid #ddd;border-radius:7px;padding:10px 12px;font-size:14px;outline:none;margin-bottom:12px;text-align:center;letter-spacing:2px}
+.login-card input:focus{border-color:#1a3c6e}
+.login-card .btn-login{width:100%;background:#1a3c6e;color:#fff;border:none;border-radius:7px;padding:10px;font-size:14px;font-weight:700;cursor:pointer}
+.login-card .btn-login:hover{background:#15305a}
+.login-card .err{color:#dc3545;font-size:11px;margin-top:6px;display:none}
+.login-card .back-link{color:#888;font-size:11px;margin-top:14px;cursor:pointer;display:block}
+.login-card .back-link:hover{color:#1a3c6e}
+
+/* Public How to Use screen */
+#screenPublic{display:none;background:#f0f2f5;align-items:flex-start;justify-content:flex-start;flex-direction:column;overflow-y:auto}
+.public-wrap{width:100%;max-width:600px;margin:0 auto;padding:20px 16px 40px}
+.public-header{background:linear-gradient(135deg,#1a3c6e,#2a5298);color:#fff;border-radius:12px;padding:20px;margin-bottom:18px;text-align:center}
+.public-header h2{font-size:18px;font-weight:700;margin-bottom:4px}
+.public-header p{font-size:11px;opacity:.75}
+.step-card{background:#fff;border-radius:10px;padding:16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.07);display:flex;gap:14px;align-items:flex-start}
+.step-num{width:32px;height:32px;min-width:32px;background:#1a3c6e;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700}
+.step-content h4{font-size:13px;font-weight:700;color:#1a3c6e;margin-bottom:3px}
+.step-content p{font-size:12px;color:#555;line-height:1.6}
+.output-card{background:#fff;border-radius:10px;padding:16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.07)}
+.output-card h4{font-size:13px;font-weight:700;color:#1a3c6e;margin-bottom:10px}
+.output-item{display:flex;gap:10px;align-items:flex-start;margin-bottom:8px}
+.output-item .badge{background:#e8f0fe;color:#1a3c6e;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;margin-top:2px}
+.output-item p{font-size:12px;color:#555;line-height:1.5}
+.note-card{background:#fff8e1;border-radius:10px;padding:14px;margin-bottom:12px;border-left:4px solid #ffc107}
+.note-card p{font-size:12px;color:#5d4037;line-height:1.6}
+.admin-link{text-align:center;margin-top:8px}
+.admin-link span{font-size:11px;color:#aaa;cursor:pointer}
+.admin-link span:hover{color:#1a3c6e}
+
+/* ── MAIN TOOL (Admin) ── */
+#screenTool{display:none;width:100%;height:100%;overflow-y:auto;flex-direction:column;align-items:stretch;background:#f0f2f5}
+.upload-section{display:flex;gap:14px;padding:12px 20px;background:#fff;border-bottom:1px solid #e0e0e0;flex-wrap:wrap;align-items:flex-end}
+.ubox{display:flex;flex-direction:column;gap:3px}
+.ubox label{font-size:10px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.4px}
+.ubox input[type=file]{border:1px dashed #bbb;padding:6px 10px;border-radius:5px;background:#fafafa;cursor:pointer;font-size:12px;min-width:260px}
+.ubox input[type=file]:hover{border-color:#1a3c6e;background:#eef2fa}
+.fst{font-size:11px;font-weight:700}.ok{color:#28a745}.wait{color:#aaa}
+.btns{display:flex;gap:7px;align-items:center}
+.btn{padding:7px 16px;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:700}
+.btn-run{background:#1a3c6e;color:#fff}.btn-run:hover{background:#15305a}.btn-run:disabled{background:#bbb;cursor:not-allowed}
+.btn-exp{background:#217346;color:#fff}.btn-exp:hover{background:#185c38}.btn-exp:disabled{background:#bbb;cursor:not-allowed}
+.btn-rst{background:#dc3545;color:#fff}.btn-rst:hover{background:#b02a37}
+.sbar{display:flex;gap:8px;padding:9px 20px;background:#f8f9fb;border-bottom:1px solid #e5e5e5;flex-wrap:wrap}
+.sc{background:#fff;border-radius:7px;padding:8px 16px;border-left:4px solid #1a3c6e;box-shadow:0 1px 3px rgba(0,0,0,.07);min-width:105px}
+.sc.m{border-left-color:#217346}.sc.s{border-left-color:#dc3545}.sc.e{border-left-color:#fd7e14}
+.sc .v{font-size:20px;font-weight:700;color:#1a3c6e}.sc.m .v{color:#217346}.sc.s .v{color:#dc3545}.sc.e .v{color:#fd7e14}
+.sc .l{font-size:10px;color:#999;margin-top:1px}
+.sum-wrap{padding:10px 20px 4px}
+.sum-wrap h3{font-size:12px;font-weight:700;color:#1a3c6e;margin-bottom:6px}
+.stbl{border-collapse:collapse;width:100%;background:#fff;border-radius:7px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.07);margin-bottom:8px}
+.stbl th{background:#1a3c6e;color:#fff;padding:7px 12px;font-size:11px;text-align:center;white-space:nowrap}
+.stbl td{padding:6px 12px;font-size:12px;text-align:center;border-bottom:1px solid #f0f0f0;white-space:nowrap}
+.stbl tr:hover td{background:#f0f6ff}
+.stbl td.un{text-align:left;font-weight:700;color:#1a3c6e}
+.stbl td.sh{text-align:left;font-size:11px;color:#666}
+.tg{display:inline-block;padding:2px 8px;border-radius:9px;font-size:10px;font-weight:700}
+.tm{background:#d4edda;color:#155724}.ts{background:#f8d7da;color:#721c24}.te{background:#fff3cd;color:#856404}
+.dpos{color:#217346;font-weight:700}.dneg{color:#dc3545;font-weight:700}.dzro{color:#aaa;font-weight:700}
+.bdg{display:inline-block;padding:1px 6px;border-radius:6px;font-size:9px;font-weight:700;margin-left:3px}
+.ba{background:#d1e7dd;color:#0a3622}.bj{background:#cfe2ff;color:#084298}
+.tw{padding:0 20px 20px;overflow:auto;max-height:calc(100vh - 320px);margin-top:8px}
+table.dt{border-collapse:collapse;width:100%;min-width:800px;background:#fff;border-radius:7px;overflow:hidden;box-shadow:0 1px 5px rgba(0,0,0,.07)}
+table.dt thead{position:sticky;top:0;z-index:5}
+table.dt th{background:#1a3c6e;color:#fff;padding:8px 10px;text-align:center;font-size:11px;font-weight:700;white-space:nowrap;border-right:1px solid #2a4e88}
+table.dt tbody tr{border-bottom:1px solid #f0f2f5}
+table.dt tbody tr:hover{background:#f0f6ff}
+table.dt td{padding:6px 10px;font-size:12px;text-align:center;border-right:1px solid #f0f2f5;white-space:nowrap}
+.loader{text-align:center;padding:50px;color:#888}
+.spin2{width:34px;height:34px;border:4px solid #ddd;border-top-color:#1a3c6e;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 12px}
+.msg{padding:32px;text-align:center;color:#aaa;font-size:13px;line-height:2.2}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── ADMIN INFO PANEL ── */
+.info-bar{background:#fff;border-bottom:1px solid #e0e0e0;padding:8px 20px;display:flex;align-items:center;justify-content:space-between}
+.info-toggle{display:flex;align-items:center;gap:7px;cursor:pointer;background:#f0f6ff;border:1px solid #c8ddf8;border-radius:6px;padding:5px 12px}
+.info-toggle span{font-size:11px;font-weight:700;color:#1a3c6e}
+.info-panel{background:#fff;border-bottom:1px solid #e0e0e0;padding:12px 20px;display:none}
+.info-panel.open{display:block}
+.info-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:8px}
+.info-card{background:#f8f9fb;border-radius:7px;padding:10px 12px;border-left:3px solid #1a3c6e}
+.info-card h4{font-size:11px;font-weight:700;color:#1a3c6e;margin-bottom:6px}
+.info-card ul{padding-left:14px;font-size:11px;color:#444;line-height:1.9}
+.info-card .mono{font-family:monospace;background:#e8f0fe;padding:1px 5px;border-radius:3px;font-size:10px}
+.info-card .tag-on{color:#155724;font-weight:700}
+.info-card .tag-off{color:#721c24;font-weight:700}
+
+</style>
+</head>
+<body>
+
+<!-- CHECKING -->
+<div class="overlay overlay-dark" id="screenChecking">
+  <div class="check-spin"></div>
+  <div class="check-text">Verifying access...</div>
+</div>
+
+<!-- LOCKED -->
+<div class="overlay overlay-dark" id="screenLocked">
+  <div class="lock-icon">🔒</div>
+  <div class="lock-title">Access Restricted</div>
+  <div class="lock-sub">This tool is currently unavailable.<br>Please contact the administrator.</div>
+  <div class="lock-brand">K-Nest Barcode Issue Tool &nbsp;|&nbsp; PPC Dept</div>
+</div>
+
+<!-- ADMIN LOGIN -->
+<div class="overlay overlay-white" id="screenLogin">
+  <div class="login-card">
+    <div class="icon">🔐</div>
+    <h2>Admin Access</h2>
+    <p>Enter your admin password to continue</p>
+    <input type="password" id="pwdInput" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="btn-login" onclick="doLogin()">Login</button>
+    <div class="err" id="loginErr">Incorrect password. Try again.</div>
+    <span class="back-link" onclick="showPublic()">← Back to How to Use</span><div style="margin-top:16px;padding-top:12px;border-top:1px solid #f0f0f0"><p style="font-size:10px;color:#bbb">Developed by <b style="color:#888">Digambar Barge</b> | PPC Dept</p></div>
+  </div>
+</div>
+
+<!-- PUBLIC: HOW TO USE -->
+<div class="overlay overlay-white" id="screenPublic" style="align-items:flex-start;justify-content:flex-start">
+  <div class="public-wrap">
+    <div class="public-header">
+      <h2>📊 K-Nest Barcode Issue Tool</h2>
+      <p>K-Nest Construction Tech &nbsp;|&nbsp; PPC Department</p>
+    </div>
+
+    <div style="font-size:13px;font-weight:700;color:#1a3c6e;margin-bottom:10px">How to Use</div>
+
+    <div class="step-card">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <h4>Open the Tool</h4>
+        <p>Open this file in <b>Google Chrome</b> browser for best experience.</p>
+      </div>
+    </div>
+    <div class="step-card">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <h4>Upload BOQ File</h4>
+        <p>Click on <b>"BOQ File"</b> upload button and select the <b>COMBINE xlsx</b> file provided by your supervisor.</p>
+      </div>
+    </div>
+    <div class="step-card">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <h4>Upload Barcode Report</h4>
+        <p>Click on <b>"Barcode File"</b> upload button and select the <b>Barcode Report</b> downloaded from ERP.</p>
+      </div>
+    </div>
+    <div class="step-card">
+      <div class="step-num">4</div>
+      <div class="step-content">
+        <h4>Run Match</h4>
+        <p>Click the <b>"Run Match"</b> button. The tool will automatically process and compare both files.</p>
+      </div>
+    </div>
+    <div class="step-card">
+      <div class="step-num">5</div>
+      <div class="step-content">
+        <h4>Review Summary</h4>
+        <p>Check the unit-wise summary table. Results are shown as <b>MATCH</b>, <b>SHORT</b>, or <b>EXTRA</b>.</p>
+      </div>
+    </div>
+    <div class="step-card">
+      <div class="step-num">6</div>
+      <div class="step-content">
+        <h4>Export Result</h4>
+        <p>Click <b>"Export Excel"</b> to download the result file — Summary, Barcode with Unit, and BOQ Merged.</p>
+      </div>
+    </div>
+
+    <div class="note-card">
+      <p>⚠️ <b>Important:</b> Always use the latest BOQ file and freshly downloaded Barcode Report from ERP for accurate results. Do not modify either file before uploading.</p>
+    </div>
+
+    <div style="margin-top:16px"><button onclick="showScreen('screenTool')" style="width:100%;background:#1a3c6e;color:#fff;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:700;cursor:pointer">▶ Open Tool</button></div><div class="admin-link" style="margin-top:10px"><span onclick="showLogin()">Admin</span></div>
+  </div>
+</div>
+
+<!-- TOOL (Admin only) -->
+<div class="overlay" id="screenTool" style="display:none;position:relative;height:auto;overflow-y:auto;flex-direction:column;align-items:stretch">
+  <div class="header">
+    <div class="header-top">
+      <div class="header-logo">
+        <div class="header-icon">📊</div>
+        <div class="header-title">
+          <h1>K-Nest Barcode Issue Tool</h1>
+          <p>BOQ vs Barcode — Unit-wise Match & Issue</p>
+        </div>
+      </div>
+      <div class="header-badge">
+        <div class="by">Designed by</div>
+        <div class="name">Digambar Barge</div>
+        <div class="dept">Dept — PPC</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="upload-section">
+    <div class="ubox">
+      <label>📁 BOQ File (COMBINE xlsx)</label>
+      <input type="file" id="boqFile" accept=".xlsx,.xls">
+      <span id="boqSt" class="fst wait">— not loaded</span>
+    </div>
+    <div class="ubox">
+      <label>📁 Barcode File (xlsx)</label>
+      <input type="file" id="barFile" accept=".xlsx,.xls">
+      <span id="barSt" class="fst wait">— not loaded</span>
+    </div>
+    <div class="btns">
+      <button class="btn btn-run" id="runBtn" disabled onclick="runMatch()">▶ Run Match</button>
+      <button class="btn btn-exp" id="expBtn" disabled onclick="exportXL()">⬇ Export Excel</button>
+      <button class="btn btn-rst" onclick="resetAll()">↺ Reset</button>
+      <button class="btn" style="background:#6c757d;color:#fff" onclick="showPublic()">⬅ Exit</button>
+    </div>
+  </div>
+
+  
+  <!-- ADMIN INFO PANEL -->
+  <div class="info-bar">
+    <div class="info-toggle" onclick="toggleInfo()">
+      <span>ℹ️ Tool Logic & Info</span>
+      <span id="infoArrow" style="font-size:10px;color:#1a3c6e">▼</span>
+    </div>
+    <span style="font-size:10px;color:#aaa">Admin View Only</span>
+  </div>
+  <div class="info-panel" id="infoPanel">
+    <div class="info-grid">
+
+      <div class="info-card">
+        <h4>🗂 BOQ File Rules</h4>
+        <ul>
+          <li>Colored (Green) tabs = <span class="tag-on">Released</span></li>
+          <li>White tabs = <span class="tag-off">Not Released</span></li>
+          <li>MAIN sheet नंतरच्या sheets process</li>
+          <li>MAIN नसेल → Colored sheets only</li>
+          <li>POUR / SUMMARY / MAIN → Skip</li>
+          <li><span class="mono">KN1(2)</span> → <span class="mono">KN1</span> merge</li>
+          <li><span class="mono">KN2(2)</span> → <span class="mono">KN2</span> merge</li>
+        </ul>
+      </div>
+
+      <div class="info-card">
+        <h4>🔢 Unit Mapping (BOQ → Barcode)</h4>
+        <ul>
+          <li><span class="mono">UTTAM</span> → <span class="mono">JB</span> (pkg qty)</li>
+          <li><span class="mono">KN6</span> → <span class="mono">GROOVE</span> (area)</li>
+          <li><span class="mono">DIS ALU1</span> → <span class="mono">DISP_ALU_P1</span></li>
+          <li><span class="mono">DIS ALU2</span> → <span class="mono">DISP_ALU_P2</span></li>
+          <li>बाकी सगळे → Sheet Name as-is</li>
+        </ul>
+      </div>
+
+      <div class="info-card">
+        <h4>📊 Barcode File Rules</h4>
+        <ul>
+          <li>BALANCEUNIT column required</li>
+          <li><span class="mono">NR</span> = Not Released → <span class="tag-off">Excluded</span></li>
+          <li><span class="mono">CL</span> = Cancelled → <span class="tag-off">Excluded</span></li>
+          <li><span class="mono">JB</span> → qty from Height field</li>
+          <li><span class="mono">GROOVE</span> → Area based match</li>
+          <li>IPO: 3718/3719/3720/3721</li>
+        </ul>
+      </div>
+
+      <div class="info-card">
+        <h4>🔧 Width Normalization</h4>
+        <ul>
+          <li>Blank width → <span class="mono">0</span></li>
+          <li>Brackets removed: <span class="mono">(225+150)</span> → <span class="mono">225+150</span></li>
+          <li><span class="mono">DP</span> code → W:<span class="mono">0</span> L:<span class="mono">200</span></li>
+          <li><span class="mono">DPA</span> code → W:<span class="mono">150</span> L:<span class="mono">300</span></li>
+          <li>Both blank → Code-only match</li>
+        </ul>
+      </div>
+
+      <div class="info-card">
+        <h4>📤 Output — 3 Sheets</h4>
+        <ul>
+          <li><b>SUMMARY</b> — Unit-wise BOQ vs Barcode</li>
+          <li><b>BARCODE_WITH_UNIT</b> — Barcode + ASSIGNED_UNIT</li>
+          <li><b>BOQ_MERGED</b> — All BOQ sheets combined</li>
+          <li>✅ MATCH = 0 diff</li>
+          <li>❌ SHORT = Barcode कमी</li>
+          <li>⚠ EXTRA = Barcode जास्त</li>
+        </ul>
+      </div>
+
+      <div class="info-card">
+        <h4>🔐 Access Control</h4>
+        <ul>
+          <li>Gist: <span class="mono">digambar-ppc</span></li>
+          <li>File: <span class="mono">knest_access.json</span></li>
+          <li><span class="tag-on">{"status":"ON"}</span> = Tool Active</li>
+          <li><span class="tag-off">{"status":"OFF"}</span> = Tool Locked</li>
+          <li>Admin Password: Protected</li>
+          <li>Version: K-Nest PPC v1.0</li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+
+  <div id="toolMain">
+    <div class="msg">⬆ Upload <b>BOQ File</b> and <b>Barcode File</b> → Click <b>Run Match</b></div>
+  </div>
+</div>
+
+<script>
+// ── CONFIG ──
+const _a = atob('RGlndUA5MDIxTQ==');
+const _g = 'https://gist.githubusercontent.com/digambar-ppc/f1a28bfaacbdb4a6ee9487abe685609f/raw/knest_access.json';
+
+// ── SCREEN CONTROL ──
+function showScreen(id){
+  ['screenChecking','screenLocked','screenLogin','screenPublic','screenTool'].forEach(s=>{
+    const el=document.getElementById(s);
+    el.style.display='none';
+    if(s==='screenTool') el.style.position='relative';
+  });
+  const target=document.getElementById(id);
+  if(id==='screenTool'){
+    target.style.display='flex';
+    target.style.position='fixed';
+    target.style.top='0';
+    target.style.left='0';
+    target.style.width='100%';
+    target.style.height='100%';
+    target.style.zIndex='9999';
+    target.style.overflowY='auto';
+    target.style.background='#f0f2f5';
+  }else if(id==='screenPublic'){
+    target.style.display='flex';
+    target.style.overflowY='auto';
+  }else{
+    target.style.display='flex';
+  }
+}
+
+function showPublic(){ showScreen('screenPublic'); }
+function showLogin(){ document.getElementById('loginErr').style.display='none'; document.getElementById('pwdInput').value=''; showScreen('screenLogin'); }
+
+function doLogin(){
+  const val=document.getElementById('pwdInput').value;
+  if(val===_a){
+    showScreen('screenTool');
+  }else{
+    document.getElementById('loginErr').style.display='block';
+    document.getElementById('pwdInput').value='';
+  }
+}
+
+// ── ACCESS CHECK ──
+async function checkAccess(){
+  try{
+    const res=await fetch(_g+'?t='+Date.now(),{cache:'no-store'});
+    const data=await res.json();
+    if(data.status&&data.status.toUpperCase()==='ON'){
+      showScreen('screenPublic');
+    }else{
+      showScreen('screenLocked');
+    }
+  }catch(e){
+    showScreen('screenPublic');
+  }
+}
+checkAccess();
+
+// ── TOOL LOGIC ──
+let boqWB=null,barWB=null,summaryData=null,barRawRows=null,barToBoqName={};
+
+const _S={'UTTAM':'JB','KN6':'GROOVE','DIS ALU1':'DISP_ALU_P1','DIS ALU2':'DISP_ALU_P2'};
+
+function _getBU(s){ return _S[s]||s.replace(/\(.*\)$/,'').trim(); }
+
+function _isColored(wb,s){
+  try{const w=wb.Workbook&&wb.Workbook.Sheets;if(!w)return false;const i=wb.SheetNames.indexOf(s);if(i<0)return false;const p=w[i];return !!(p&&p.TabColor);}catch(e){return false;}
+}
+
+function _isUnit(wb,s){
+  const mi=wb.SheetNames.findIndex(x=>x.toUpperCase()==='MAIN');
+  if(mi<0)return _isColored(wb,s);
+  return wb.SheetNames.indexOf(s)>mi;
+}
+
+function _nW(w){
+  if(w===null||w===undefined)return '0';
+  let s=String(w).trim();
+  if(s===''||s==='0')return '0';
+  return s.replace(/[()]/g,'').trim()||'0';
+}
+
+document.getElementById('boqFile').addEventListener('change',e=>_load(e.target.files[0],'boq'));
+document.getElementById('barFile').addEventListener('change',e=>_load(e.target.files[0],'bar'));
+
+function _load(file,type){
+  if(!file)return;
+  const el=document.getElementById(type==='boq'?'boqSt':'barSt');
+  el.textContent='⏳ Loading...';el.className='fst wait';
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'binary',cellDates:true});
+      if(type==='boq')boqWB=wb;else barWB=wb;
+      el.textContent='✅ '+file.name;el.className='fst ok';
+      document.getElementById('runBtn').disabled=!(boqWB&&barWB);
+    }catch(err){el.textContent='❌ '+err.message;}
+  };
+  r.readAsBinaryString(file);
+}
+
+function runMatch(){
+  document.getElementById('toolMain').innerHTML='<div class="loader"><div class="spin2"></div>Processing...</div>';
+  setTimeout(()=>{
+    try{
+      const boq={};const boqAllRows=[];
+      for(const sname of boqWB.SheetNames){
+        if(!_isUnit(boqWB,sname))continue;
+        const bu=_getBU(sname);
+        const rows=XLSX.utils.sheet_to_json(boqWB.Sheets[sname],{header:1,defval:null});
+        let hi=rows.findIndex(r=>r&&r.some(c=>String(c||'').toLowerCase()==='width'));
+        if(hi<0)hi=rows.findIndex(r=>r&&r.some(c=>String(c||'').toLowerCase()==='code'));
+        if(hi<0)continue;
+        const h=rows[hi];
+        const ci=n=>h.findIndex(c=>String(c||'').toLowerCase()===n.toLowerCase());
+        const[iW,iC,iL,iQ,iA,iR]=[ci('width'),ci('code'),ci('length'),ci('qty'),ci('total area'),ci('remarks')];
+        for(let i=hi+1;i<rows.length;i++){
+          const row=rows[i];
+          if(!row||!row.some(c=>c!=null&&c!==''))continue;
+          const w=iW>=0&&row[iW]!=null?_nW(row[iW]):'0';
+          const c2=iC>=0&&row[iC]!=null?String(row[iC]).trim():'';
+          const l=iL>=0&&row[iL]!=null?String(row[iL]).trim():'';
+          const qty=parseFloat(row[iQ])||0;
+          let area=0;try{area=parseFloat(row[iA])||0;}catch(e){}
+          const rem=iR>=0&&row[iR]!=null?String(row[iR]).trim():'';
+          if(!c2&&!w)continue;
+          if(!boq[bu])boq[bu]={bu,sheets:[],qty:0,area:0};
+          if(!boq[bu].sheets.includes(sname))boq[bu].sheets.push(sname);
+          boq[bu].qty+=qty;boq[bu].area+=area;
+          boqAllRows.push([sname,bu,w,c2,l,qty,area,rem]);
+        }
+      }
+
+      const ws0=barWB.Sheets[barWB.SheetNames[0]];
+      barRawRows=XLSX.utils.sheet_to_json(ws0,{header:1,defval:null});
+      const hb=barRawRows[0]||[];
+      const ci2=n=>hb.findIndex(c=>String(c||'').toUpperCase()===n.toUpperCase());
+      const[iIPO,iW2,iItem,iH,iAREA,iBAL]=[ci2('IPO'),ci2('Width'),ci2('Item'),ci2('Height'),ci2('AREA'),ci2('BALANCEUNIT')];
+
+      const bar={};
+      for(let i=1;i<barRawRows.length;i++){
+        const row=barRawRows[i];
+        if(!row||row[iBAL]==null)continue;
+        const bal=String(row[iBAL]).trim();
+        if(bal==='NR'||bal==='CL')continue;
+        const area=parseFloat(row[iAREA])||0;
+        let qty=1;
+        if(bal==='JB'){try{qty=parseInt(String(row[iH]).split(' X ')[0].trim())||1;}catch(e){}}
+        if(!bar[bal])bar[bal]={qty:0,area:0,count:0};
+        bar[bal].qty+=qty;bar[bal].area+=area;bar[bal].count+=1;
+      }
+
+      barToBoqName={};
+      for(const[bu,v]of Object.entries(boq)){if(!barToBoqName[bu])barToBoqName[bu]=v.sheets.join('/');}
+
+      summaryData=[];
+      const allU=new Set([...Object.keys(boq),...Object.keys(bar)]);
+      for(const bu of[...allU].sort()){
+        const b=boq[bu],bc=bar[bu];
+        const bq=b?b.qty:0,ba=b?b.area:0;
+        const rq=bc?bc.qty:0,ra=bc?bc.area:0;
+        const dq=rq-bq,da=parseFloat((ra-ba).toFixed(4));
+        const st=bu==='GROOVE'?(da===0?'MATCH':da<0?'SHORT':'EXTRA'):(dq===0?'MATCH':dq<0?'SHORT':'EXTRA');
+        const sheets=b?b.sheets.join('/'):'-';
+        summaryData.push({bu,sheets,bq,ba:parseFloat(ba.toFixed(4)),rq,ra:parseFloat(ra.toFixed(4)),dq,da,st});
+      }
+
+      const tot=summaryData.length,mat=summaryData.filter(r=>r.st==='MATCH').length;
+      const sht=summaryData.filter(r=>r.st==='SHORT').length,ext=summaryData.filter(r=>r.st==='EXTRA').length;
+
+      const srows=summaryData.map(u=>{
+        const isA=u.bu==='GROOVE';
+        const dval=isA?u.da:u.dq;
+        const dc=dval===0?'dzro':dval>0?'dpos':'dneg';
+        const sf=u.st==='MATCH'?'tm':u.st==='SHORT'?'ts':'te';
+        const badge=isA?'<span class="bdg ba">AREA</span>':u.bu==='JB'?'<span class="bdg bj">PKG</span>':'';
+        return '<tr><td class="un">'+u.bu+badge+'</td><td class="sh">'+u.sheets+'</td>'
+          +'<td>'+u.bq+'</td><td>'+u.ba.toFixed(3)+'</td>'
+          +'<td>'+u.rq+'</td><td>'+u.ra.toFixed(3)+'</td>'
+          +'<td class="'+dc+'">'+(dval>0?'+':'')+dval+'</td>'
+          +'<td><span class="tg '+sf+'">'+u.st+'</span></td></tr>';
+      }).join('');
+
+      document.getElementById('toolMain').innerHTML=
+        '<div class="sbar">'
+        +'<div class="sc"><div class="v">'+tot+'</div><div class="l">Total Units</div></div>'
+        +'<div class="sc m"><div class="v">'+mat+'</div><div class="l">✅ Match</div></div>'
+        +'<div class="sc s"><div class="v">'+sht+'</div><div class="l">❌ Short</div></div>'
+        +'<div class="sc e"><div class="v">'+ext+'</div><div class="l">⚠ Extra</div></div>'
+        +'<div class="sc"><div class="v">'+(tot?((mat/tot)*100).toFixed(1):0)+'%</div><div class="l">Match Rate</div></div>'
+        +'</div>'
+        +'<div class="sum-wrap"><h3>📋 Unit-wise Summary</h3>'
+        +'<div style="overflow:auto"><table class="stbl"><thead><tr>'
+        +'<th>BALANCEUNIT</th><th>BOQ Sheet(s)</th>'
+        +'<th>BOQ Qty</th><th>BOQ Area</th>'
+        +'<th>Barcode Qty</th><th>Barcode Area</th>'
+        +'<th>Diff</th><th>Status</th>'
+        +'</tr></thead><tbody>'+srows+'</tbody></table></div></div>';
+
+      document.getElementById('expBtn').disabled=false;
+    }catch(err){
+      document.getElementById('toolMain').innerHTML='<div class="msg">❌ Error: '+err.message+'</div>';
+    }
+  },80);
+}
+
+function exportXL(){
+  if(!summaryData||!barRawRows)return;
+  const wb2=XLSX.utils.book_new();
+  const SH=['BOQ Sheet(s)','BALANCEUNIT','BOQ Qty','BOQ Area (m²)','Barcode Qty','Barcode Area (m²)','Diff Qty','Diff Area (m²)','Status'];
+  const sd=[SH,...summaryData.map(u=>[u.sheets,u.bu,u.bq,u.ba,u.rq,u.ra,u.dq,u.da,u.st])];
+  sd.push(['Grand Total','',summaryData.reduce((s,r)=>s+r.bq,0),parseFloat(summaryData.reduce((s,r)=>s+r.ba,0).toFixed(4)),summaryData.reduce((s,r)=>s+r.rq,0),parseFloat(summaryData.reduce((s,r)=>s+r.ra,0).toFixed(4)),summaryData.reduce((s,r)=>s+r.dq,0),parseFloat(summaryData.reduce((s,r)=>s+r.da,0).toFixed(4)),'']);
+  XLSX.utils.book_append_sheet(wb2,XLSX.utils.aoa_to_sheet(sd),'SUMMARY');
+
+  const origH=barRawRows[0]||[];
+  const iBAL2=origH.findIndex(c=>String(c||'').toUpperCase()==='BALANCEUNIT');
+  const ins=iBAL2>=0?iBAL2+1:origH.length;
+  const newH=[...origH.slice(0,ins),'ASSIGNED_UNIT',...origH.slice(ins)];
+  const nr=[newH];
+  for(let i=1;i<barRawRows.length;i++){
+    const row=barRawRows[i];
+    if(!row||!row.some(c=>c!=null))continue;
+    const bal=(iBAL2>=0&&row[iBAL2]!=null)?String(row[iBAL2]).trim():'';
+    const assigned=(bal==='NR'||bal==='CL')?bal:(barToBoqName[bal]||bal);
+    nr.push([...row.slice(0,ins),assigned,...row.slice(ins)]);
+  }
+  XLSX.utils.book_append_sheet(wb2,XLSX.utils.aoa_to_sheet(nr),'BARCODE_WITH_UNIT');
+
+  const BH=['BOQ Sheet','BALANCEUNIT','Width','Code','Length','Qty','Total Area (m²)','Remarks (IPO)'];
+  const br=[BH];
+  for(const sname of boqWB.SheetNames){
+    if(!_isUnit(boqWB,sname))continue;
+    const bu=_getBU(sname);
+    const rows=XLSX.utils.sheet_to_json(boqWB.Sheets[sname],{header:1,defval:null});
+    let hi=rows.findIndex(r=>r&&r.some(c=>String(c||'').toLowerCase()==='width'));
+    if(hi<0)hi=rows.findIndex(r=>r&&r.some(c=>String(c||'').toLowerCase()==='code'));
+    if(hi<0)continue;
+    const h=rows[hi];
+    const ci=n=>h.findIndex(c=>String(c||'').toLowerCase()===n.toLowerCase());
+    const[iW,iC,iL,iQ,iA,iR]=[ci('width'),ci('code'),ci('length'),ci('qty'),ci('total area'),ci('remarks')];
+    for(let i=hi+1;i<rows.length;i++){
+      const row=rows[i];
+      if(!row||!row.some(c=>c!=null&&c!==''))continue;
+      const w=iW>=0&&row[iW]!=null?_nW(row[iW]):'';
+      const c2=iC>=0&&row[iC]!=null?String(row[iC]).trim():'';
+      const l=iL>=0&&row[iL]!=null?String(row[iL]).trim():'';
+      const qty=parseFloat(row[iQ])||0;
+      let area=0;try{area=parseFloat(row[iA])||0;}catch(e){}
+      const rem=iR>=0&&row[iR]!=null?String(row[iR]).trim():'';
+      if(!c2&&!w)continue;
+      br.push([sname,bu,w,c2,l,qty,parseFloat(area.toFixed(4)),rem]);
+    }
+  }
+  XLSX.utils.book_append_sheet(wb2,XLSX.utils.aoa_to_sheet(br),'BOQ_MERGED');
+  XLSX.writeFile(wb2,'KNest_Barcode_Issue_Output.xlsx');
+}
+
+function resetAll(){
+  boqWB=null;barWB=null;summaryData=null;barRawRows=null;barToBoqName={};
+  document.getElementById('boqFile').value='';document.getElementById('barFile').value='';
+  ['boqSt','barSt'].forEach(id=>{document.getElementById(id).textContent='— not loaded';document.getElementById(id).className='fst wait';});
+  document.getElementById('runBtn').disabled=true;document.getElementById('expBtn').disabled=true;
+  document.getElementById('toolMain').innerHTML='<div class="msg">⬆ Upload <b>BOQ File</b> and <b>Barcode File</b> → Click <b>Run Match</b></div>';
+}
+
+function toggleInfo(){
+  const panel = document.getElementById('infoPanel');
+  const arrow = document.getElementById('infoArrow');
+  const isOpen = panel.classList.contains('open');
+  panel.classList.toggle('open');
+  arrow.textContent = isOpen ? '▼' : '▲';
+}
+
+</script>
+</body>
+</html>
